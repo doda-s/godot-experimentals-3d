@@ -2,6 +2,7 @@ extends CharacterBody3D
 
 const SPEED := 5.0
 const JUMP_VELOCITY := 4.5
+const MOVIMENT_DIRECTION_SMOOTHING := 10
 
 var gravity_force = ProjectSettings.get_setting("physics/3d/default_gravity")
 var input_direction = Vector3.ZERO
@@ -33,9 +34,14 @@ func _physics_process(delta):
 	if Input.is_action_just_pressed("jump") and is_on_floor():
 		velocity.y = JUMP_VELOCITY
 	
-	var direction = get_direction()
+	var direction = get_direction()['moviment_direction']
+	var model_direction = get_direction()['model_direction']
 	if direction != Vector3.ZERO:
-		model.look_at(global_position + direction)
+		model.rotation.y = lerp_angle(
+			model.rotation.y, 
+			atan2(-model_direction.x, -model_direction.z), 
+			delta*MOVIMENT_DIRECTION_SMOOTHING
+		)
 		velocity.x = direction.x * SPEED
 		velocity.z = direction.z * SPEED
 	else:
@@ -44,8 +50,11 @@ func _physics_process(delta):
 	
 	move_and_slide()
 
-func get_direction() -> Vector3:
+func get_direction() -> Dictionary:
 	input_direction.x = int(Input.is_action_pressed("right")) - int(Input.is_action_pressed("left"))
 	input_direction.y = 0
 	input_direction.z = int(Input.is_action_pressed("backward")) - int(Input.is_action_pressed("forward"))
-	return (transform.basis * input_direction).normalized()
+	return {
+		'moviment_direction':(transform.basis * input_direction).normalized(),
+		'model_direction': input_direction.normalized(),
+	}
